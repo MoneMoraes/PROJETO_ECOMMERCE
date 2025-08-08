@@ -44,39 +44,60 @@ const SignInForm = () => {
   });
 
   async function onSubmit(values: FormValues) {
-    await authClient.signIn.email({
-      email: values.email,
-      password: values.password,
-      fetchOptions: {
-        onSucess: () => {
-          router.push("/");
-        },
-        onError: (ctx) => {
-          if (ctx.error.code === "USER_NOT_FOUND") {
-            toast.error("E-mail não encontrado.");
-            return form.setError("email", {
-              message: "E-mail não encontrado.",
-            });
-          }
-          if (ctx.error.code === "INVALID_EMAIL_OR_PASSWORD") {
-            toast.error("E-mail ou senha inválidos.");
-            form.setError("password", {
-              message: "E-mail ou senha inválidos.",
-            });
-            return form.setError("email", {
-              message: "E-mail ou senha inválidos.",
-            });
-          }
+    try {
+      console.log("Attempting login with:", values.email);
 
-          toast.error(ctx.error.message);
+      await authClient.signIn.email({
+        email: values.email,
+        password: values.password,
+        fetchOptions: {
+          onSuccess: () => {
+            console.log("Login successful, redirecting to home...");
+            toast.success("Login realizado com sucesso!");
+
+            // Try router.push first
+            router.push("/");
+
+            // Fallback: if router.push doesn't work after 1 second, use window.location
+            setTimeout(() => {
+              if (window.location.pathname !== "/") {
+                console.log("Router.push failed, using window.location.href");
+                window.location.href = "/";
+              }
+            }, 1000);
+          },
+          onError: (ctx) => {
+            console.error("Login error:", ctx.error);
+
+            if (ctx.error.code === "USER_NOT_FOUND") {
+              toast.error("E-mail não encontrado.");
+              return form.setError("email", {
+                message: "E-mail não encontrado.",
+              });
+            }
+            if (ctx.error.code === "INVALID_EMAIL_OR_PASSWORD") {
+              toast.error("E-mail ou senha inválidos.");
+              form.setError("password", {
+                message: "E-mail ou senha inválidos.",
+              });
+              return form.setError("email", {
+                message: "E-mail ou senha inválidos.",
+              });
+            }
+
+            toast.error(ctx.error.message);
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Erro ao fazer login. Tente novamente.");
+    }
   }
 
   return (
     <>
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Entrar</CardTitle>
           <CardDescription>Faça login para continuar.</CardDescription>
