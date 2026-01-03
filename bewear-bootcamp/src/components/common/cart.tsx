@@ -1,3 +1,5 @@
+"use client";
+
 import { ShoppingBagIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
