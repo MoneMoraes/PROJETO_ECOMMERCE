@@ -1,4 +1,4 @@
-"use-server";
+"use server";
 
 import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
@@ -51,5 +51,11 @@ export const addProductToCart = async (data: addProductToCartSchema) => {
         quantity: cartItem.quantity + data.quantity,
       })
       .where(eq(cartItemTable.id, cartItem.id));
+    return;
   }
+  await db.insert(cartItemTable).values({
+    cartId,
+    productVariantId: data.productVariantId,
+    quantity: data.quantity,
+  });
 };
