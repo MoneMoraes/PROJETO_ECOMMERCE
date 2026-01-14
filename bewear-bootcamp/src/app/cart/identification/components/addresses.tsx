@@ -4,8 +4,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
+import { toast } from "sonner";
 import z from "zod";
 
+import { createShippingAddress } from "@/actions/create-shipping-address";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const formSchema = z.object({
-  email: z.email("Email inválido."),
+  email: z.string().email("Email inválido."),
   fullName: z.string().trim().min(1, "Nome completo é obrigatório."),
   cpf: z
     .string()
@@ -64,8 +66,16 @@ const Addresses = () => {
     },
   });
 
-  function onSubmit(values: FormValues) {
-    console.log(values);
+  async function onSubmit(values: FormValues) {
+    try {
+      await createShippingAddress(values);
+      toast.success("Endereço salvo com sucesso!");
+      form.reset();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao salvar endereço.",
+      );
+    }
   }
 
   return (
