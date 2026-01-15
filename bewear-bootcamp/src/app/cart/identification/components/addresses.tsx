@@ -7,7 +7,6 @@ import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
 import z from "zod";
 
-import { createShippingAddress } from "@/actions/create-shipping-address";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,6 +20,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useCreateShippingAddress } from "@/hooks/mutations/use-create-shipping-address";
+import { useShippingAddresses } from "@/hooks/queries/use-shipping-addresses";
 
 const formSchema = z.object({
   email: z.string().email("Email inválido."),
@@ -49,6 +50,8 @@ type FormValues = z.infer<typeof formSchema>;
 
 const Addresses = () => {
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+  const { data: addresses = [], isLoading } = useShippingAddresses();
+  const { mutate: createAddress, isPending } = useCreateShippingAddress();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,16 +69,37 @@ const Addresses = () => {
     },
   });
 
-  async function onSubmit(values: FormValues) {
-    try {
-      await createShippingAddress(values);
-      toast.success("Endereço salvo com sucesso!");
-      form.reset();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao salvar endereço.",
-      );
-    }
+  function onSubmit(values: FormValues) {
+    createAddress(values, {
+      onSuccess: () => {
+        toast.success("Endereço salvo com sucesso!");
+        form.reset();
+        setSelectedAddress(null);
+      },
+      onError: (error) => {
+        toast.error(
+          error instanceof Error ? error.message : "Erro ao salvar endereço.",
+        );
+      },
+    });
+  }
+
+  function formatAddress(address: {
+    recipientName: string;
+    street: string;
+    number: string;
+    complement: string | null;
+    neighborhood: string;
+  }) {
+    const parts = [
+      address.recipientName,
+      address.street,
+      address.number,
+      address.complement,
+      address.neighborhood,
+    ].filter(Boolean);
+    const formatted = parts.join(", ");
+    return formatted.length > 60 ? `${formatted.slice(0, 60)}...` : formatted;
   }
 
   return (
@@ -85,14 +109,29 @@ const Addresses = () => {
       </CardHeader>
       <CardContent>
         <RadioGroup value={selectedAddress} onValueChange={setSelectedAddress}>
-          <Card>
-            <CardContent>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="add_new" id="add_new" />
-                <Label htmlFor="add_new">Adicionar novo endereço</Label>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="space-y-4">
+            {!isLoading &&
+              addresses.map((address) => (
+                <Card key={address.id}>
+                  <CardContent>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value={address.id} id={address.id} />
+                      <Label htmlFor={address.id} className="cursor-pointer">
+                        {formatAddress(address)}
+                      </Label>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            <Card>
+              <CardContent>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="add_new" id="add_new" />
+                  <Label htmlFor="add_new">Adicionar novo endereço</Label>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </RadioGroup>
         {selectedAddress === "add_new" && (
           <Form {...form}>
@@ -270,7 +309,7 @@ const Addresses = () => {
                   )}
                 />
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={isPending}>
                 Salvar endereço
               </Button>
             </form>
