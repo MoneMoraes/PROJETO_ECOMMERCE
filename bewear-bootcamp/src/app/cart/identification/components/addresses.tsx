@@ -22,10 +22,11 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shippingAddressTable } from "@/db/schema";
 import { useCreateShippingAddress } from "@/hooks/mutations/use-create-shipping-address";
+import { useUpdateCartShippingAddress } from "@/hooks/mutations/use-update-cart-shipping-address";
 import { useShippingAddresses } from "@/hooks/queries/use-shipping-addresses";
 
 const formSchema = z.object({
-  email: z.string().email("Email inválido."),
+  email: z.email("Email inválido."),
   fullName: z.string().trim().min(1, "Nome completo é obrigatório."),
   cpf: z
     .string()
@@ -58,7 +59,10 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
   const { data: addresses = [], isLoading } = useShippingAddresses({
     initialData: shippingAddresses,
   });
-  const { mutate: createAddress, isPending } = useCreateShippingAddress();
+  const { mutate: createAddress, isPending: isCreatingAddress } =
+    useCreateShippingAddress();
+  const { mutate: updateCartAddress, isPending: isUpdatingCart } =
+    useUpdateCartShippingAddress();
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -78,9 +82,24 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
 
   function onSubmit(values: FormValues) {
     createAddress(values, {
-      onSuccess: () => {
+      onSuccess: (newAddress) => {
         toast.success("Endereço salvo com sucesso!");
         form.reset();
+        updateCartAddress(
+          { shippingAddressId: newAddress.id },
+          {
+            onSuccess: () => {
+              toast.success("Endereço vinculado ao carrinho!");
+            },
+            onError: (error) => {
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Erro ao vincular endereço ao carrinho.",
+              );
+            },
+          },
+        );
         setSelectedAddress(null);
       },
       onError: (error) => {
@@ -89,6 +108,27 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
         );
       },
     });
+  }
+
+  function handleGoToPayment() {
+    if (!selectedAddress || selectedAddress === "add_new") {
+      return;
+    }
+    updateCartAddress(
+      { shippingAddressId: selectedAddress },
+      {
+        onSuccess: () => {
+          toast.success("Endereço vinculado ao carrinho!");
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Erro ao vincular endereço ao carrinho.",
+          );
+        },
+      },
+    );
   }
 
   function formatAddress(address: {
@@ -123,8 +163,16 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
                   <CardContent>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value={address.id} id={address.id} />
-                      <Label htmlFor={address.id} className="cursor-pointer">
-                        {formatAddress(address)}
+                      <Label
+                        htmlFor={address.id}
+                        className="text-foreground flex w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1"
+                      >
+                        <span>
+                          {address.recipientName} {address.street},{" "}
+                          {address.number}
+                          {address.complement ? `, ${address.complement}` : ""},{" "}
+                          {address.neighborhood}, {address.zipCode}
+                        </span>
                       </Label>
                     </div>
                   </CardContent>
@@ -316,12 +364,29 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
                   )}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isPending}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isCreatingAddress || isUpdatingCart}
+              >
                 Salvar endereço
               </Button>
             </form>
           </Form>
         )}
+        {selectedAddress &&
+          selectedAddress !== "add_new" &&
+          addresses.some((addr) => addr.id === selectedAddress) && (
+            <div className="mt-6">
+              <Button
+                onClick={handleGoToPayment}
+                className="w-full"
+                disabled={isUpdatingCart}
+              >
+                Ir para pagamento
+              </Button>
+            </div>
+          )}
       </CardContent>
     </Card>
   );

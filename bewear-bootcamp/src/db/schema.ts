@@ -141,6 +141,7 @@ export const shippingAddressTable = pgTable("shipping_address", {
   city: text().notNull(),
   state: text().notNull(),
   neighborhood: text().notNull(),
+  zipCode: text().notNull(),
   country: text().notNull(),
   phone: text().notNull(),
   email: text().notNull(),
