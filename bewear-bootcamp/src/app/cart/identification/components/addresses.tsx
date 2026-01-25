@@ -1,12 +1,13 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
 import { toast } from "sonner";
 import z from "zod";
 
+import { getCart } from "@/actions/get-cart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -23,6 +24,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { shippingAddressTable } from "@/db/schema";
 import { useCreateShippingAddress } from "@/hooks/mutations/use-create-shipping-address";
 import { useUpdateCartShippingAddress } from "@/hooks/mutations/use-update-cart-shipping-address";
+import { useCart } from "@/hooks/queries/use-cart";
 import { useShippingAddresses } from "@/hooks/queries/use-shipping-addresses";
 
 const formSchema = z.object({
@@ -52,10 +54,11 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface AddressesProps {
   shippingAddresses: (typeof shippingAddressTable.$inferSelect)[];
+  initialCart: Awaited<ReturnType<typeof getCart>>;
 }
 
-const Addresses = ({ shippingAddresses }: AddressesProps) => {
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
+const Addresses = ({ shippingAddresses, initialCart }: AddressesProps) => {
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(initialCart?.shippingAddress?.id || null);
   const { data: addresses = [], isLoading } = useShippingAddresses({
     initialData: shippingAddresses,
   });
@@ -63,6 +66,9 @@ const Addresses = ({ shippingAddresses }: AddressesProps) => {
     useCreateShippingAddress();
   const { mutate: updateCartAddress, isPending: isUpdatingCart } =
     useUpdateCartShippingAddress();
+
+  
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
