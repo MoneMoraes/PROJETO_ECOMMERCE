@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PatternFormat } from "react-number-format";
@@ -58,6 +59,7 @@ interface AddressesProps {
 }
 
 const Addresses = ({ shippingAddresses, initialCart }: AddressesProps) => {
+  const router = useRouter();
   const [selectedAddress, setSelectedAddress] = useState<string | null>(initialCart?.shippingAddress?.id || null);
   const { data: addresses = [], isLoading } = useShippingAddresses({
     initialData: shippingAddresses,
@@ -125,6 +127,7 @@ const Addresses = ({ shippingAddresses, initialCart }: AddressesProps) => {
       {
         onSuccess: () => {
           toast.success("Endereço vinculado ao carrinho!");
+          router.push("/cart/confirmation");
         },
         onError: (error) => {
           toast.error(
@@ -174,10 +177,7 @@ const Addresses = ({ shippingAddresses, initialCart }: AddressesProps) => {
                         className="text-foreground flex w-full cursor-pointer flex-wrap items-center gap-x-2 gap-y-1"
                       >
                         <span>
-                          {address.recipientName} {address.street},{" "}
-                          {address.number}
-                          {address.complement ? `, ${address.complement}` : ""},{" "}
-                          {address.neighborhood}, {address.zipCode}
+                          {formatAddress(address)}
                         </span>
                       </Label>
                     </div>
